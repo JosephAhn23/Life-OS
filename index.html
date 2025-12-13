@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Life OS</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Three.js -->
+  <script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script>
+    const SUPABASE_URL = "https://nefdlkvtvsqwihlkamgy.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5lZmRsa3Z0dnNxd2lobGthbWd5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU2MzYxNzUsImV4cCI6MjA4MTIxMjE3NX0.fF0VSzKwPrUcskwARlTElcdAzyaLA5g6H7Y7eOKe8hY";
+
+    const { createClient } = window.supabase;
+    const supabase = createClient(
+      SUPABASE_URL,
+      SUPABASE_ANON_KEY
+    );
+  </script>
+
+  <style>
+    body { margin: 0; background: #f8fafc; }
+    #bg { position: fixed; inset: 0; z-index: 0; }
+    #app { position: relative; z-index: 10; }
+  </style>
+</head>
+
+<body>
+
+<canvas id="bg"></canvas>
+
+<div id="app" class="min-h-screen flex flex-col items-center py-12 gap-12">
+
+<!-- ================= DOCTOR APP ================= -->
+<div class="w-full max-w-md bg-white p-6 rounded-xl shadow space-y-4">
+  <h1 class="text-xl font-bold text-center">Doctor App</h1>
+
+  <div id="docTimer" class="text-center text-3xl font-mono">00:00:00</div>
+
+  <div class="flex gap-2">
+    <button id="docStart" class="flex-1 bg-indigo-600 text-white py-2 rounded">START</button>
+    <button id="docStop" class="flex-1 border py-2 rounded">STOP</button>
+  </div>
+
+  <div class="grid grid-cols-2 gap-2">
+    <input id="docCalories" type="number" placeholder="Calories" class="border p-2 rounded">
+    <input id="docProtein" type="number" placeholder="Protein (g)" class="border p-2 rounded">
+  </div>
+
+  <div class="flex justify-between text-sm">
+    <label><input id="docSwim" type="checkbox"> Swim</label>
+    <label><input id="docGym" type="checkbox"> Gym</label>
+    <label><input id="docHome" type="checkbox"> Dumbbells</label>
+  </div>
+
+  <div id="docStatus" class="text-center text-sm text-green-600"></div>
+</div>
+
+<!-- ================= FASTING TIMER ================= -->
+<div class="w-full max-w-md bg-white p-6 rounded-xl shadow space-y-4">
+  <h1 class="text-xl font-bold text-center">SaaS Timer</h1>
+
+  <div id="fastTimer" class="text-center text-3xl font-mono">00:00:00</div>
+
+  <div class="flex gap-2">
+    <button id="fastStart" class="flex-1 bg-emerald-600 text-white py-2 rounded">START</button>
+    <button id="fastStop" class="flex-1 border py-2 rounded">STOP</button>
+  </div>
+
+  <div id="fastStatus" class="text-center text-sm text-green-600"></div>
+</div>
+
+<!-- ================= INCOME ================= -->
+<div class="w-full max-w-md bg-white/70 backdrop-blur border rounded-xl p-6 shadow space-y-3">
+  <h1 class="text-xl font-bold text-center">Income Projection</h1>
+
+  <input id="saas" class="border p-2 rounded w-full" placeholder="SaaS Hours ×10">
+  <input id="projects" class="border p-2 rounded w-full" placeholder="Projects ×6">
+  <input id="cgpa" class="border p-2 rounded w-full" placeholder="CGPA ×4">
+  <input id="bf" class="border p-2 rounded w-full" placeholder="Body Fat % −0.5">
+
+  <button id="calcIncome" class="bg-indigo-600 text-white py-2 rounded w-full">
+    Calculate & Save
+  </button>
+
+  <div id="incomeResult" class="text-center text-indigo-600"></div>
+</div>
+
+<!-- ================= TABLE EDITOR ================= -->
+<div class="w-full max-w-6xl space-y-4">
+  <h2 class="text-lg font-bold text-center">Table Editor (2 Most Recent)</h2>
+  
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    
+    <!-- Doctor Logs Editor -->
+    <div class="bg-white p-4 rounded-xl shadow">
+      <h3 class="text-md font-bold mb-2">Doctor App</h3>
+      <div class="mb-2 flex gap-2">
+        <button onclick="addRowToTable('doctor_logs')" class="flex-1 bg-green-600 text-white px-2 py-1 rounded text-xs">+ Add</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-xs">
+          <thead id="editorHead_doc" class="bg-gray-100"></thead>
+          <tbody id="editorBody_doc"></tbody>
+        </table>
+      </div>
+      <div id="editorStatus_doc" class="mt-2 text-center text-xs"></div>
+    </div>
+    
+    <!-- SaaS Timer Editor -->
+    <div class="bg-white p-4 rounded-xl shadow">
+      <h3 class="text-md font-bold mb-2">SaaS Timer</h3>
+      <div class="mb-2 flex gap-2">
+        <button onclick="addRowToTable('fasting_logs')" class="flex-1 bg-green-600 text-white px-2 py-1 rounded text-xs">+ Add</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-xs">
+          <thead id="editorHead_fast" class="bg-gray-100"></thead>
+          <tbody id="editorBody_fast"></tbody>
+        </table>
+      </div>
+      <div id="editorStatus_fast" class="mt-2 text-center text-xs"></div>
+    </div>
+    
+    <!-- Income Logs Editor -->
+    <div class="bg-white p-4 rounded-xl shadow">
+      <h3 class="text-md font-bold mb-2">Income Projection</h3>
+      <div class="mb-2 flex gap-2">
+        <button onclick="addRowToTable('income_logs')" class="flex-1 bg-green-600 text-white px-2 py-1 rounded text-xs">+ Add</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-xs">
+          <thead id="editorHead_income" class="bg-gray-100"></thead>
+          <tbody id="editorBody_income"></tbody>
+        </table>
+      </div>
+      <div id="editorStatus_income" class="mt-2 text-center text-xs"></div>
+    </div>
+    
+  </div>
+  
+  <div class="text-center">
+    <button id="saveAllTablesBtn" class="bg-indigo-600 text-white px-6 py-2 rounded">💾 Save All Edits to Supabase</button>
+    <div id="editorStatus" class="mt-2 text-center text-sm text-gray-600">Note: Edits are NOT auto-saved. Click button to save changes.</div>
+  </div>
+</div>
+
+
+</div>
+
+<script>
+/* ===== HELPERS ===== */
+const pad = n => String(n).padStart(2,"0");
+const fmt = s => `${pad(s/3600|0)}:${pad(s%3600/60|0)}:${pad(s%60)}`;
+
+/* ===== DOCTOR APP ===== */
+let dStart = null, dInt = null;
+
+docStart.onclick = () => {
+  if (dInt) return;
+  dStart = Date.now();
+  dInt = setInterval(() => {
+    docTimer.textContent = fmt((Date.now() - dStart) / 1000 | 0);
+  }, 1000);
+};
+
+docStop.onclick = async () => {
+  clearInterval(dInt);
+  dInt = null;
+
+  const hours = ((Date.now() - dStart) / 3600000).toFixed(2);
+  const score =
+    (docGym.checked ? 0.026 : 0) +
+    (docSwim.checked ? 0.025 : 0) +
+    (docHome.checked ? 0.018 : 0);
+
+  await supabase.from("doctor_logs").insert({
+    date: new Date().toISOString().slice(0,10),
+    hours,
+    calories: +docCalories.value || 0,
+    protein: +docProtein.value || 0,
+    score
+  });
+
+  docTimer.textContent = "00:00:00";
+  docStatus.textContent = "Saved to Supabase ✅";
+};
+
+/* ===== SaaS TIMER ===== */
+let fStart = null, fInt = null;
+
+fastStart.onclick = () => {
+  if (fInt) return;
+  fStart = Date.now();
+  fInt = setInterval(() => {
+    fastTimer.textContent = fmt((Date.now() - fStart) / 1000 | 0);
+  }, 1000);
+};
+
+fastStop.onclick = async () => {
+  clearInterval(fInt);
+  fInt = null;
+
+  await supabase.from("fasting_logs").insert({
+    date: new Date().toISOString().slice(0,10),
+    seconds: (Date.now() - fStart) / 1000 | 0
+  });
+
+  fastTimer.textContent = "00:00:00";
+  fastStatus.textContent = "Saved to Supabase ✅";
+};
+
+/* ===== INCOME ===== */
+calcIncome.onclick = async () => {
+  const score =
+    (+saas.value||0)*10 +
+    (+projects.value||0)*6 +
+    (+cgpa.value||0)*4 -
+    (+bf.value||0)*0.5;
+
+  incomeResult.textContent = "Score: " + score.toFixed(2);
+
+  await supabase.from("income_logs").insert({
+    saas: +saas.value || 0,
+    projects: +projects.value || 0,
+    cgpa: +cgpa.value || 0,
+    bf: +bf.value || 0,
+    score
+  });
+};
+
+
+/* ===== TABLE EDITOR ===== */
+const editorData = {
+  doctor_logs: [],
+  fasting_logs: [],
+  income_logs: []
+};
+
+const deletedIds = {
+  doctor_logs: [],
+  fasting_logs: [],
+  income_logs: []
+};
+
+const tableSchemas = {
+  doctor_logs: {
+    columns: ["id", "date", "hours", "calories", "protein", "score"],
+    editable: ["date", "hours", "calories", "protein", "score"],
+    headers: ["Date", "Hours", "Calories", "Protein", "Score"],
+    suffix: "_doc"
+  },
+  fasting_logs: {
+    columns: ["id", "date", "seconds"],
+    editable: ["date", "seconds"],
+    headers: ["Date", "Seconds"],
+    suffix: "_fast"
+  },
+  income_logs: {
+    columns: ["id", "saas", "projects", "cgpa", "bf", "score"],
+    editable: ["saas", "projects", "cgpa", "bf", "score"],
+    headers: ["SaaS", "Projects", "CGPA", "BF%", "Score"],
+    suffix: "_income"
+  }
+};
+
+async function loadTableEditor() {
+  for (const tableName of Object.keys(tableSchemas)) {
+    await loadSingleTable(tableName);
+  }
+}
+
+async function loadSingleTable(tableName) {
+  const { data, error } = await supabase
+    .from(tableName)
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(2);
+  
+  if (error) {
+    const statusEl = document.getElementById(`editorStatus${tableSchemas[tableName].suffix}`);
+    if (statusEl) statusEl.textContent = "Error: " + error.message;
+    return;
+  }
+  
+  editorData[tableName] = data || [];
+  deletedIds[tableName] = [];
+  renderSingleTable(tableName);
+}
+
+function renderSingleTable(tableName) {
+  const schema = tableSchemas[tableName];
+  const suffix = schema.suffix;
+  const head = document.getElementById(`editorHead${suffix}`);
+  const body = document.getElementById(`editorBody${suffix}`);
+  const data = editorData[tableName];
+  
+  // Render headers
+  head.innerHTML = `
+    <tr>
+      ${schema.headers.map(h => `<th class="border p-1 text-left text-xs">${h}</th>`).join("")}
+      <th class="border p-1 text-left text-xs">Del</th>
+    </tr>
+  `;
+  
+  // Render rows (max 2)
+  body.innerHTML = data.slice(0, 2).map((row, idx) => `
+    <tr class="hover:bg-gray-50" data-idx="${idx}">
+      ${schema.columns.filter(col => col !== "id").map(col => {
+        const isEditable = schema.editable.includes(col);
+        const value = row[col] ?? "";
+        return `<td class="border p-1">
+          ${isEditable 
+            ? `<input type="${col === 'date' ? 'date' : ['score', 'hours', 'seconds', 'saas', 'projects', 'cgpa', 'bf'].includes(col) ? 'number' : 'text'}" 
+                     value="${value}" 
+                     data-col="${col}" 
+                     data-idx="${idx}"
+                     data-table="${tableName}"
+                     class="w-full p-1 border-0 focus:outline-none focus:bg-blue-50 text-xs" 
+                     step="${['score', 'hours', 'cgpa', 'bf'].includes(col) ? '0.001' : '1'}">`
+            : `<span class="px-1 text-xs">${value}</span>`}
+        </td>`;
+      }).join("")}
+      <td class="border p-1">
+        <button onclick="deleteRow('${tableName}', ${idx})" class="text-red-600 hover:bg-red-50 px-1 py-0.5 rounded text-xs">×</button>
+      </td>
+    </tr>
+  `).join("");
+  
+  // Add input listeners
+  body.querySelectorAll("input").forEach(input => {
+    input.addEventListener("change", (e) => {
+      const idx = parseInt(e.target.dataset.idx);
+      const col = e.target.dataset.col;
+      const table = e.target.dataset.table;
+      const value = e.target.type === "number" ? parseFloat(e.target.value) || 0 : e.target.value;
+      editorData[table][idx][col] = value;
+    });
+  });
+}
+
+window.deleteRow = function(tableName, idx) {
+  const row = editorData[tableName][idx];
+  if (row && row.id) deletedIds[tableName].push(row.id);
+  editorData[tableName].splice(idx, 1);
+  renderSingleTable(tableName);
+};
+
+window.addRowToTable = function(tableName) {
+  const schema = tableSchemas[tableName];
+  const newRow = { id: null };
+  schema.columns.forEach(col => {
+    if (col !== "id") {
+      if (col === "date") newRow[col] = new Date().toISOString().slice(0, 10);
+      else newRow[col] = ["score", "hours", "seconds", "saas", "projects", "cgpa", "bf"].includes(col) ? 0 : "";
+    }
+  });
+  editorData[tableName].unshift(newRow);
+  // Keep only 2 rows
+  if (editorData[tableName].length > 2) {
+    editorData[tableName] = editorData[tableName].slice(0, 2);
+  }
+  renderSingleTable(tableName);
+};
+
+document.getElementById("saveAllTablesBtn").onclick = async () => {
+  const statusEl = document.getElementById("editorStatus");
+  statusEl.textContent = "Saving all tables...";
+  
+  try {
+    // Save each table
+    for (const tableName of Object.keys(tableSchemas)) {
+      // Delete removed rows
+      for (const id of deletedIds[tableName]) {
+        await supabase.from(tableName).delete().eq("id", id);
+      }
+      
+      // Update/insert rows
+      for (const row of editorData[tableName]) {
+        const { id, ...data } = row;
+        if (id) {
+          // Update existing
+          await supabase.from(tableName).update(data).eq("id", id);
+        } else {
+          // Insert new
+          await supabase.from(tableName).insert(data);
+        }
+      }
+    }
+    
+    statusEl.textContent = "✅ All tables saved to Supabase!";
+    setTimeout(() => statusEl.textContent = "", 3000);
+    loadTableEditor(); // Reload the editor with fresh data
+  } catch (error) {
+    statusEl.textContent = "❌ Error: " + error.message;
+  }
+};
+
+// Load editor on page load
+loadTableEditor();
+(()=>{
+  const scene = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
+  const ren = new THREE.WebGLRenderer({ canvas: bg, alpha: true });
+  ren.setSize(innerWidth, innerHeight);
+  cam.position.z = 6;
+
+  const s = new THREE.Mesh(
+    new THREE.SphereGeometry(3,64,64),
+    new THREE.MeshBasicMaterial({ color: 0x6366f1, wireframe:true })
+  );
+  scene.add(s);
+
+  (function anim(){
+    requestAnimationFrame(anim);
+    s.rotation.y += 0.003;
+    ren.render(scene, cam);
+  })();
+})();
+</script>
+
+</body>
+</html>
